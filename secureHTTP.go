@@ -29,20 +29,29 @@ var TlsConfig = &tls.Config{
 	},
 }
 
-const XFrameOptions = "SAMEORIGIN"
-const XContentTypeOptions = "nosniff"
-const StrictTransportSecurity = "max-age=3600"
-const ContentSecurityPolicy = "default-src https"
+const (
+	XFrameOptions           = "SAMEORIGIN"
+	XContentTypeOptions     = "nosniff"
+	StrictTransportSecurity = "max-age=3600"
+	ContentSecurityPolicy   = "default-src https"
+	readTimeout             = 5 * time.Second
+	writeTimeout            = 5 * time.Second
+	idleTimeout             = 5 * time.Second
+)
 
 type secureServer struct {
-	Certificate                   string
-	PrivateKey                    string
+	Options     *Options
+	Certificate string
+	PrivateKey  string
+	Mux         http.Handler
+	httpSrv     *http.Server
+}
+
+type Options struct {
 	TlsConfig                     *tls.Config
 	ReadTimeout                   time.Duration
 	WriteTimeout                  time.Duration
 	IdleTimeout                   time.Duration
-	Address                       string
-	Mux                           http.Handler
 	EnableLogging                 bool
 	LoggingOut                    io.Writer
 	EnableXFrameOptions           bool
@@ -53,80 +62,65 @@ type secureServer struct {
 	StrictTransportSecurity       string
 	EnableContentSecurityPolicy   bool
 	ContentSecurityPolicy         string
-	httpSrv                       *http.Server
 }
 
-func New(address string, certificate string, privateKey string, mux http.Handler) *secureServer {
+var defaultOptions = Options{
+	TlsConfig:                     TlsConfig,
+	ReadTimeout:                   readTimeout,
+	WriteTimeout:                  writeTimeout,
+	IdleTimeout:                   idleTimeout,
+	EnableLogging:                 true,
+	LoggingOut:                    os.Stdout,
+	EnableXFrameOptions:           true,
+	XFrameOptions:                 XFrameOptions,
+	EnableContentSecurityPolicy:   true,
+	ContentSecurityPolicy:         ContentSecurityPolicy,
+	EnableXContentType:            true,
+	XContentTypeOptions:           XContentTypeOptions,
+	EnableStrictTransportSecurity: true,
+	StrictTransportSecurity:       StrictTransportSecurity,
+}
+
+func New(certificate string, privateKey string) *secureServer {
 	s := secureServer{
-		Certificate:                   certificate,
-		PrivateKey:                    privateKey,
-		TlsConfig:                     TlsConfig,
-		ReadTimeout:                   5 * time.Second,
-		WriteTimeout:                  5 * time.Second,
-		IdleTimeout:                   120 * time.Second,
-		Address:                       address,
-		Mux:                           mux,
-		EnableLogging:                 true,
-		LoggingOut:                    os.Stdout,
-		EnableXFrameOptions:           true,
-		XFrameOptions:                 XFrameOptions,
-		EnableXContentType:            true,
-		XContentTypeOptions:           XContentTypeOptions,
-		EnableStrictTransportSecurity: true,
-		StrictTransportSecurity:       StrictTransportSecurity,
-		EnableContentSecurityPolicy:   true,
-		ContentSecurityPolicy:         ContentSecurityPolicy,
+		Certificate: certificate,
+		PrivateKey:  privateKey,
+		Options:     &defaultOptions,
 	}
 
 	return &s
 }
 
-func NewWithOptions(certificate string, privateKey string, tlsConfig *tls.Config, readTimeout time.Duration, writeTimeout time.Duration, idleTimeout time.Duration, address string, mux http.Handler, enableLogging bool,
-	loggingOut io.Writer, enableXFrameOptions bool, XFrameOptions string, enableXContentType bool, xContentTypeOptions string, enableStrictTransportSecurity bool, strictTransportSecurity string,
-	enableContentSecurityPolicy bool, contentSecurityPolicy string) *secureServer {
+func NewWithOptions(certificate string, privateKey string, options *Options) *secureServer {
 
 	s := secureServer{
-		Certificate:                   certificate,
-		PrivateKey:                    privateKey,
-		TlsConfig:                     tlsConfig,
-		ReadTimeout:                   readTimeout,
-		WriteTimeout:                  writeTimeout,
-		IdleTimeout:                   idleTimeout,
-		Address:                       address,
-		Mux:                           mux,
-		EnableLogging:                 enableLogging,
-		LoggingOut:                    loggingOut,
-		EnableXFrameOptions:           enableXFrameOptions,
-		XFrameOptions:                 XFrameOptions,
-		EnableXContentType:            enableXContentType,
-		XContentTypeOptions:           xContentTypeOptions,
-		EnableStrictTransportSecurity: enableStrictTransportSecurity,
-		StrictTransportSecurity:       strictTransportSecurity,
-		EnableContentSecurityPolicy:   enableContentSecurityPolicy,
-		ContentSecurityPolicy:         contentSecurityPolicy,
+		Certificate: certificate,
+		PrivateKey:  privateKey,
+		Options:     options,
 	}
 
 	return &s
 }
 
-func (srv *secureServer) Serve() error {
+func (srv *secureServer) Serve(address string, mux http.Handler) error {
 	httpsSrv := &http.Server{
-		TLSConfig:    srv.TlsConfig,
-		ReadTimeout:  srv.ReadTimeout,
-		WriteTimeout: srv.WriteTimeout,
-		IdleTimeout:  srv.IdleTimeout,
-		Addr:         srv.Address,
+		TLSConfig:    srv.Options.TlsConfig,
+		ReadTimeout:  srv.Options.ReadTimeout,
+		WriteTimeout: srv.Options.WriteTimeout,
+		IdleTimeout:  srv.Options.IdleTimeout,
+		Addr:         address,
+		Handler:      mux,
 	}
 
-	headers := srv.EnableXFrameOptions || srv.EnableXContentType || srv.EnableStrictTransportSecurity || srv.EnableContentSecurityPolicy
+	headers := srv.Options.EnableXFrameOptions || srv.Options.EnableXContentType || srv.Options.EnableStrictTransportSecurity || srv.Options.EnableContentSecurityPolicy
 	switch {
-	case srv.EnableLogging && headers:
-		loggingRtr := handlers.CombinedLoggingHandler(srv.LoggingOut, srv.Mux)
+	case srv.Options.EnableLogging && headers:
+		loggingRtr := handlers.CombinedLoggingHandler(srv.Options.LoggingOut, mux)
 		httpsSrv.Handler = srv.headerHandler(loggingRtr)
-	case srv.EnableLogging && !headers:
-		httpsSrv.Handler = handlers.CombinedLoggingHandler(srv.LoggingOut, srv.Mux)
-	case !srv.EnableLogging && headers:
-		httpsSrv.Handler = srv.headerHandler(srv.Mux)
+	case srv.Options.EnableLogging && !headers:
+		httpsSrv.Handler = handlers.CombinedLoggingHandler(srv.Options.LoggingOut, mux)
+	case !srv.Options.EnableLogging && headers:
+		httpsSrv.Handler = srv.headerHandler(mux)
 	}
 
 	srv.httpSrv = httpsSrv
@@ -145,16 +139,16 @@ func (srv *secureServer) headerHandler(h http.Handler) http.Handler {
 }
 
 func (srv *secureServer) setHeaders(w http.ResponseWriter) {
-	if srv.EnableXFrameOptions {
-		w.Header().Set("X-Frame-Options", srv.XFrameOptions)
+	if srv.Options.EnableXFrameOptions {
+		w.Header().Set("X-Frame-Options", srv.Options.XFrameOptions)
 	}
-	if srv.EnableXContentType {
-		w.Header().Set("X-Content-Type-Options", srv.XContentTypeOptions)
+	if srv.Options.EnableXContentType {
+		w.Header().Set("X-Content-Type-Options", srv.Options.XContentTypeOptions)
 	}
-	if srv.EnableStrictTransportSecurity {
-		w.Header().Set("Strict-Transport-Security", srv.StrictTransportSecurity)
+	if srv.Options.EnableStrictTransportSecurity {
+		w.Header().Set("Strict-Transport-Security", srv.Options.StrictTransportSecurity)
 	}
-	if srv.EnableContentSecurityPolicy {
-		w.Header().Set("Content-Security-Policy", srv.ContentSecurityPolicy)
+	if srv.Options.EnableContentSecurityPolicy {
+		w.Header().Set("Content-Security-Policy", srv.Options.ContentSecurityPolicy)
 	}
 }

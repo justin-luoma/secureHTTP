@@ -22,15 +22,15 @@
 			}
 			w.Write([]byte("Hello, World!\n"))
 		})
-		
+
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt)
 
-		srv := secureHTTP.New(":443", "cert.pem", "key.pem", mux)
+		srv := secureHTTP.New("cert.pem", "key.pem")
 		go func() {
-			log.Fatal(srv.Serve())
+			log.Fatal(srv.Serve(":443", mux))
 		}()
-		
+
 		<-stop
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 		srv.Shutdown(ctx)
