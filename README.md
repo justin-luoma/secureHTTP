@@ -2,6 +2,10 @@
 
 secureHTTP is a HTTP middleware to implement a secure web server in go that is safe to expose to the internet.
 
+## Install
+
+    go get github.com/justin-luoma/secureHTTP
+
 ## Usage
 
 Default Settings:
@@ -102,3 +106,10 @@ func main() {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	srv.Shutdown(ctx)
 }
+~~~
+
+# TODO
+
+ - Write tests
+ - Improve documentation
+ - Implement HTTP redirect server
