@@ -10,7 +10,50 @@ import (
 	"github.com/gorilla/handlers"
 )
 
-var TlsConfig = &tls.Config{
+const (
+	XFrameOptions           = "SAMEORIGIN"
+	XContentTypeOptions     = "nosniff"
+	StrictTransportSecurity = "max-age=31536000"
+	ContentSecurityPolicy   = "default-src https"
+	readTimeout             = 5 * time.Second
+	writeTimeout            = 5 * time.Second
+	idleTimeout             = 120 * time.Second
+)
+
+// Options struct contains all the setting for secureHTTP
+type Options struct {
+	// TLSConfig contains the tls server settings see TLSConfig struct and https://godoc.org/crypto/tls#Config
+	TLSConfig                     *tls.Config
+	// ReadTimeout for http server default 5 seconds. See https://godoc.org/net/http#Server
+	ReadTimeout                   time.Duration
+	// WriteTimeout for http server default 5 seconds. See https://godoc.org/net/http#Server
+	WriteTimeout                  time.Duration
+	// IdleTimeout for http server default 120 seconds. See https://godoc.org/net/http#Server
+	IdleTimeout                   time.Duration
+	// EnableLogging enable access logs via gorilla/handlers default true
+	EnableLogging                 bool
+	// LoggingOut where to send logging data default StdOut
+	LoggingOut                    io.Writer
+	// EnableXFrameOptions enables X-Frame-Options header injection to all responses, default true
+	EnableXFrameOptions           bool
+	// XFrameOptions is the content of the X-Frame-Options header, default SAMEORIGIN
+	XFrameOptions                 string
+	// EnableXContentType enables X-Content-Type header injection into all responses, default true
+	EnableXContentType            bool
+	// XContentTypeOptions sets the content of X-Content-Type header, default nosniff
+	XContentTypeOptions           string
+	// EnableStrictTransportSecurity enables Strict-Transport-Security header injection into all responses, default true
+	EnableStrictTransportSecurity bool
+	// StrictTransportSecurity sets the content of Strict-Transport-Security header, default max-age=31536000
+	StrictTransportSecurity       string
+	// EnableContentSecurityPolicy enables Content-Security-Policy header injection into all responses, default true
+	EnableContentSecurityPolicy   bool
+	// ContentSecurityPolicy sets the content of Content-Security-Policy header, default default-src https
+	ContentSecurityPolicy         string
+}
+
+//TLSConfig contains secure curve preferences and cipher suites for the default tls options
+var TLSConfig = &tls.Config{
 	MinVersion:               tls.VersionTLS12,
 	PreferServerCipherSuites: true,
 	CurvePreferences: []tls.CurveID{
@@ -29,16 +72,6 @@ var TlsConfig = &tls.Config{
 	},
 }
 
-const (
-	XFrameOptions           = "SAMEORIGIN"
-	XContentTypeOptions     = "nosniff"
-	StrictTransportSecurity = "max-age=3600"
-	ContentSecurityPolicy   = "default-src https"
-	readTimeout             = 5 * time.Second
-	writeTimeout            = 5 * time.Second
-	idleTimeout             = 5 * time.Second
-)
-
 type secureServer struct {
 	Options     *Options
 	Certificate string
@@ -47,22 +80,7 @@ type secureServer struct {
 	httpSrv     *http.Server
 }
 
-type Options struct {
-	TlsConfig                     *tls.Config
-	ReadTimeout                   time.Duration
-	WriteTimeout                  time.Duration
-	IdleTimeout                   time.Duration
-	EnableLogging                 bool
-	LoggingOut                    io.Writer
-	EnableXFrameOptions           bool
-	XFrameOptions                 string
-	EnableXContentType            bool
-	XContentTypeOptions           string
-	EnableStrictTransportSecurity bool
-	StrictTransportSecurity       string
-	EnableContentSecurityPolicy   bool
-	ContentSecurityPolicy         string
-}
+
 
 var defaultOptions = Options{
 	TlsConfig:                     TlsConfig,
@@ -81,6 +99,7 @@ var defaultOptions = Options{
 	StrictTransportSecurity:       StrictTransportSecurity,
 }
 
+// New returns a secureServer with the default options
 func New(certificate string, privateKey string) *secureServer {
 	s := secureServer{
 		Certificate: certificate,
@@ -91,6 +110,7 @@ func New(certificate string, privateKey string) *secureServer {
 	return &s
 }
 
+// NewWithOptions returns a secureServer with the provided custom options
 func NewWithOptions(certificate string, privateKey string, options *Options) *secureServer {
 
 	s := secureServer{
@@ -102,6 +122,7 @@ func NewWithOptions(certificate string, privateKey string, options *Options) *se
 	return &s
 }
 
+// Serve starts http.ListenAndServeTLS with the configured options and returns its error
 func (srv *secureServer) Serve(address string, mux http.Handler) error {
 	httpsSrv := &http.Server{
 		TLSConfig:    srv.Options.TlsConfig,
@@ -127,6 +148,7 @@ func (srv *secureServer) Serve(address string, mux http.Handler) error {
 	return srv.httpSrv.ListenAndServeTLS(srv.Certificate, srv.PrivateKey)
 }
 
+// Shutdown stops http.ListenAndServeTLS cleanly
 func (srv *secureServer) Shutdown(ctx context.Context) error {
 	return srv.httpSrv.Shutdown(ctx)
 }
