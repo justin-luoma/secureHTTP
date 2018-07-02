@@ -20,7 +20,7 @@ const (
 	idleTimeout             = 120 * time.Second
 )
 
-// Options struct contains all the setting for secureHTTP
+// options struct contains all the setting for secureHTTP
 type Options struct {
 	// TLSConfig contains the tls server settings see TLSConfig struct and https://godoc.org/crypto/tls#Config
 	TLSConfig                     *tls.Config
@@ -34,9 +34,9 @@ type Options struct {
 	EnableLogging                 bool
 	// LoggingOut where to send logging data default StdOut
 	LoggingOut                    io.Writer
-	// EnableXFrameOptions enables X-Frame-Options header injection to all responses, default true
+	// EnableXFrameOptions enables X-Frame-options header injection to all responses, default true
 	EnableXFrameOptions           bool
-	// XFrameOptions is the content of the X-Frame-Options header, default SAMEORIGIN
+	// XFrameOptions is the content of the X-Frame-options header, default SAMEORIGIN
 	XFrameOptions                 string
 	// EnableXContentType enables X-Content-Type header injection into all responses, default true
 	EnableXContentType            bool
@@ -72,18 +72,16 @@ var TLSConfig = &tls.Config{
 	},
 }
 
-type secureServer struct {
-	Options     *Options
-	Certificate string
-	PrivateKey  string
-	Mux         http.Handler
+// SecureServer implements a secure HTTP middleware will strong default options
+type SecureServer struct {
+	options     *Options
+	certificate string
+	privateKey  string
 	httpSrv     *http.Server
 }
 
-
-
 var defaultOptions = Options{
-	TlsConfig:                     TlsConfig,
+	TLSConfig:                     TLSConfig,
 	ReadTimeout:                   readTimeout,
 	WriteTimeout:                  writeTimeout,
 	IdleTimeout:                   idleTimeout,
@@ -100,77 +98,77 @@ var defaultOptions = Options{
 }
 
 // New returns a secureServer with the default options
-func New(certificate string, privateKey string) *secureServer {
-	s := secureServer{
-		Certificate: certificate,
-		PrivateKey:  privateKey,
-		Options:     &defaultOptions,
+func New(certificate string, privateKey string) *SecureServer {
+	s := SecureServer{
+		certificate: certificate,
+		privateKey:  privateKey,
+		options:     &defaultOptions,
 	}
 
 	return &s
 }
 
 // NewWithOptions returns a secureServer with the provided custom options
-func NewWithOptions(certificate string, privateKey string, options *Options) *secureServer {
+func NewWithOptions(certificate string, privateKey string, options *Options) *SecureServer {
 
-	s := secureServer{
-		Certificate: certificate,
-		PrivateKey:  privateKey,
-		Options:     options,
+	s := SecureServer{
+		certificate: certificate,
+		privateKey:  privateKey,
+		options:     options,
 	}
 
 	return &s
 }
 
 // Serve starts http.ListenAndServeTLS with the configured options and returns its error
-func (srv *secureServer) Serve(address string, mux http.Handler) error {
+func (srv *SecureServer) Serve(address string, mux http.Handler) error {
 	httpsSrv := &http.Server{
-		TLSConfig:    srv.Options.TlsConfig,
-		ReadTimeout:  srv.Options.ReadTimeout,
-		WriteTimeout: srv.Options.WriteTimeout,
-		IdleTimeout:  srv.Options.IdleTimeout,
+		TLSConfig:    srv.options.TLSConfig,
+		ReadTimeout:  srv.options.ReadTimeout,
+		WriteTimeout: srv.options.WriteTimeout,
+		IdleTimeout:  srv.options.IdleTimeout,
 		Addr:         address,
 		Handler:      mux,
 	}
 
-	headers := srv.Options.EnableXFrameOptions || srv.Options.EnableXContentType || srv.Options.EnableStrictTransportSecurity || srv.Options.EnableContentSecurityPolicy
+	headers := srv.options.EnableXFrameOptions || srv.options.EnableXContentType || srv.options.EnableStrictTransportSecurity || srv.options.EnableContentSecurityPolicy
 	switch {
-	case srv.Options.EnableLogging && headers:
-		loggingRtr := handlers.CombinedLoggingHandler(srv.Options.LoggingOut, mux)
+	case srv.options.EnableLogging && headers:
+		loggingRtr := handlers.CombinedLoggingHandler(srv.options.LoggingOut, mux)
 		httpsSrv.Handler = srv.headerHandler(loggingRtr)
-	case srv.Options.EnableLogging && !headers:
-		httpsSrv.Handler = handlers.CombinedLoggingHandler(srv.Options.LoggingOut, mux)
-	case !srv.Options.EnableLogging && headers:
+	case srv.options.EnableLogging && !headers:
+		httpsSrv.Handler = handlers.CombinedLoggingHandler(srv.options.LoggingOut, mux)
+	case !srv.options.EnableLogging && headers:
 		httpsSrv.Handler = srv.headerHandler(mux)
 	}
 
 	srv.httpSrv = httpsSrv
-	return srv.httpSrv.ListenAndServeTLS(srv.Certificate, srv.PrivateKey)
+	return srv.httpSrv.ListenAndServeTLS(srv.certificate, srv.privateKey)
 }
 
 // Shutdown stops http.ListenAndServeTLS cleanly
-func (srv *secureServer) Shutdown(ctx context.Context) error {
+func (srv *SecureServer) Shutdown(ctx context.Context) error {
 	return srv.httpSrv.Shutdown(ctx)
 }
 
-func (srv *secureServer) headerHandler(h http.Handler) http.Handler {
+func (srv *SecureServer) headerHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		srv.setHeaders(w)
 		h.ServeHTTP(w, r)
 	})
 }
 
-func (srv *secureServer) setHeaders(w http.ResponseWriter) {
-	if srv.Options.EnableXFrameOptions {
-		w.Header().Set("X-Frame-Options", srv.Options.XFrameOptions)
+func (srv *SecureServer) setHeaders(w http.ResponseWriter) {
+	if srv.options.EnableXFrameOptions {
+		w.Header().Set("X-Frame-options", srv.options.XFrameOptions)
 	}
-	if srv.Options.EnableXContentType {
-		w.Header().Set("X-Content-Type-Options", srv.Options.XContentTypeOptions)
+	if srv.options.EnableXContentType {
+		w.Header().Set("X-Content-Type-options", srv.options.XContentTypeOptions)
 	}
-	if srv.Options.EnableStrictTransportSecurity {
-		w.Header().Set("Strict-Transport-Security", srv.Options.StrictTransportSecurity)
+	if srv.options.EnableStrictTransportSecurity {
+		w.Header().Set("Strict-Transport-Security", srv.options.StrictTransportSecurity)
 	}
-	if srv.Options.EnableContentSecurityPolicy {
-		w.Header().Set("Content-Security-Policy", srv.Options.ContentSecurityPolicy)
+	if srv.options.EnableContentSecurityPolicy {
+		w.Header().Set("Content-Security-Policy", srv.options.ContentSecurityPolicy)
 	}
 }

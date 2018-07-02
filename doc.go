@@ -1,4 +1,5 @@
-/*Package secureHTTP is an HTTP middleware to implement a secure web server in go that is safe to expose to the internet.
+/*
+Package secureHTTP is an HTTP middleware to implement a secure web server in go that is safe to expose to the internet.
 
 	package main
 	
