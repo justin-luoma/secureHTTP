@@ -11,16 +11,20 @@ import (
 )
 
 const (
+	// XFrameOptions default setting for X-Frame-Options header
 	XFrameOptions           = "SAMEORIGIN"
+	// XContentTypeOptions default setting for X-Content-Type header
 	XContentTypeOptions     = "nosniff"
+	// StrictTransportSecurity default setting for Strict-Transport-Security header
 	StrictTransportSecurity = "max-age=31536000"
+	// ContentSecurityPolicy default setting for Content-Security-Policy header
 	ContentSecurityPolicy   = "default-src https"
 	readTimeout             = 5 * time.Second
 	writeTimeout            = 5 * time.Second
 	idleTimeout             = 120 * time.Second
 )
 
-// options struct contains all the setting for secureHTTP
+// Options struct contains all the setting for secureHTTP
 type Options struct {
 	// TLSConfig contains the tls server settings see TLSConfig struct and https://godoc.org/crypto/tls#Config
 	TLSConfig                     *tls.Config
