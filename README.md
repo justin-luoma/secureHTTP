@@ -1,4 +1,4 @@
-﻿# secureHTTP
+﻿# secureHTTP [![GoDoc](https://godoc.org/github.com/justin-luoma/secureHTTP?status.svg)](https://godoc.org/github.com/justin-luoma/secureHTTP)
 
 secureHTTP is a HTTP middleware to implement a secure web server in go that is safe to expose to the internet.
 
