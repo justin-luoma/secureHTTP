@@ -12,48 +12,48 @@ import (
 
 const (
 	// XFrameOptions default setting for X-Frame-Options header
-	XFrameOptions           = "SAMEORIGIN"
+	XFrameOptions = "SAMEORIGIN"
 	// XContentTypeOptions default setting for X-Content-Type header
-	XContentTypeOptions     = "nosniff"
+	XContentTypeOptions = "nosniff"
 	// StrictTransportSecurity default setting for Strict-Transport-Security header
 	StrictTransportSecurity = "max-age=31536000"
 	// ContentSecurityPolicy default setting for Content-Security-Policy header
-	ContentSecurityPolicy   = "default-src https"
-	readTimeout             = 5 * time.Second
-	writeTimeout            = 5 * time.Second
-	idleTimeout             = 120 * time.Second
+	ContentSecurityPolicy = "default-src https"
+	readTimeout           = 5 * time.Second
+	writeTimeout          = 5 * time.Second
+	idleTimeout           = 120 * time.Second
 )
 
 // Options struct contains all the setting for secureHTTP
 type Options struct {
 	// TLSConfig contains the tls server settings see TLSConfig struct and https://godoc.org/crypto/tls#Config
-	TLSConfig                     *tls.Config
+	TLSConfig *tls.Config
 	// ReadTimeout for http server default 5 seconds. See https://godoc.org/net/http#Server
-	ReadTimeout                   time.Duration
+	ReadTimeout time.Duration
 	// WriteTimeout for http server default 5 seconds. See https://godoc.org/net/http#Server
-	WriteTimeout                  time.Duration
+	WriteTimeout time.Duration
 	// IdleTimeout for http server default 120 seconds. See https://godoc.org/net/http#Server
-	IdleTimeout                   time.Duration
+	IdleTimeout time.Duration
 	// EnableLogging enable access logs via gorilla/handlers default true
-	EnableLogging                 bool
+	EnableLogging bool
 	// LoggingOut where to send logging data default StdOut
-	LoggingOut                    io.Writer
+	LoggingOut io.Writer
 	// EnableXFrameOptions enables X-Frame-options header injection to all responses, default true
-	EnableXFrameOptions           bool
+	EnableXFrameOptions bool
 	// XFrameOptions is the content of the X-Frame-options header, default SAMEORIGIN
-	XFrameOptions                 string
+	XFrameOptions string
 	// EnableXContentType enables X-Content-Type header injection into all responses, default true
-	EnableXContentType            bool
+	EnableXContentType bool
 	// XContentTypeOptions sets the content of X-Content-Type header, default nosniff
-	XContentTypeOptions           string
+	XContentTypeOptions string
 	// EnableStrictTransportSecurity enables Strict-Transport-Security header injection into all responses, default true
 	EnableStrictTransportSecurity bool
 	// StrictTransportSecurity sets the content of Strict-Transport-Security header, default max-age=31536000
-	StrictTransportSecurity       string
+	StrictTransportSecurity string
 	// EnableContentSecurityPolicy enables Content-Security-Policy header injection into all responses, default true
-	EnableContentSecurityPolicy   bool
+	EnableContentSecurityPolicy bool
 	// ContentSecurityPolicy sets the content of Content-Security-Policy header, default default-src https
-	ContentSecurityPolicy         string
+	ContentSecurityPolicy string
 }
 
 //TLSConfig contains secure curve preferences and cipher suites for the default tls options
