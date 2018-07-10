@@ -1,0 +1,20 @@
+sudo: false
+
+language: go
+
+go:
+  - 1.10.x
+
+git:
+  depth: 1
+
+install: true
+
+notifications:
+  email: false
+
+before_script:
+  - go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
+
+script:
+  - golangci-lint run
